@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  investigater:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: investigater
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount api_keys.json to persist API key configuration
+      - ./api_keys.json:/app/api_keys.json:ro
+      # Optional: Mount uploads directory if you want to persist uploaded files
+      - ./uploads:/app/uploads
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import socket; s=socket.socket(); s.connect((\"localhost\", 5000)); s.close()' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+

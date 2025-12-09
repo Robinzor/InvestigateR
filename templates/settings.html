@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - InvestigateR</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Dark Mode Variables */
+        :root {
+            --bg-color: #181a1b;
+            --text-color: #e8e6e3;
+            --card-bg: #1c1e1f;
+            --card-border: #2d2f30;
+            --table-bg: #1c1e1f;
+            --table-border: #2d2f30;
+            --table-hover: #2d2f30;
+            --input-bg: #1c1e1f;
+            --input-border: #2d2f30;
+            --input-text: #e8e6e3;
+            --modal-bg: #1c1e1f;
+            --modal-border: #2d2f30;
+            --alert-bg: #2d2f30;
+            --alert-border: #3d3f40;
+            --link-color: #58a6ff;
+            --link-hover: #79b8ff;
+            --input-group-text-bg: #2d2f30;
+            --input-group-text-border: #3d3f40;
+            --input-group-text-color: #e8e6e3;
+        }
+
+        /* Base Styles */
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-color: var(--card-border);
+        }
+
+        .form-control {
+            background-color: var(--input-bg);
+            border-color: var(--input-border);
+            color: var(--input-text);
+        }
+
+        .form-control:focus {
+            background-color: var(--input-bg);
+            border-color: var(--input-border);
+            color: var(--input-text);
+        }
+
+        .input-group-text {
+            background-color: var(--input-group-text-bg);
+            border-color: var(--input-group-text-border);
+            color: var(--input-group-text-color);
+        }
+
+        .alert {
+            background-color: var(--alert-bg);
+            border-color: var(--alert-border);
+        }
+
+        a {
+            color: var(--link-color);
+        }
+
+        a:hover {
+            color: var(--link-hover);
+        }
+
+
+        /* Override Bootstrap badge colors for dark theme */
+        .badge-success {
+            background-color: #28a745;
+        }
+
+        .badge-danger {
+            background-color: #dc3545;
+        }
+
+        .badge-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Settings</h1>
+            <div>
+                <button class="btn btn-outline-primary mr-2" onclick="toggleTheme()">
+                    <i class="fas fa-moon"></i> Toggle Theme
+                </button>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-primary">Back to Home</a>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">API Keys</h5>
+                <button type="button" class="btn btn-outline-info btn-sm" id="checkApiKeysBtn" title="Check API Key Status">
+                    <i class="fas fa-key"></i> Check API Keys
+                </button>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="apiKeysForm">
+                    {% if modules %}
+                    {% for module in modules %}
+                    <div class="form-group">
+                        <label for="{{ module.api_key_name }}_key">{{ module.display_label }} API Key{% if not module.requires_api_key %} <small class="text-muted">(Optional)</small>{% endif %}</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="{{ module.api_key_name }}_key" name="{{ module.api_key_name }}_key" value="" placeholder="{% if module.requires_api_key %}{{ 'API key is set - enter new value to change' if api_keys_set.get(module.api_key_name) else 'Enter ' + module.display_label + ' API key' }}{% else %}{{ 'API key is set (optional) - enter new value to change' if api_keys_set.get(module.api_key_name) else 'Enter ' + module.display_label + ' API key (optional)' }}{% endif %}">
+                            <div class="input-group-append">
+                                <span class="input-group-text">
+                                    <i class="fas fa-{{ 'check-circle text-success' if api_status.get(module.api_key_name) == 'valid' else 'times-circle text-danger' if api_status.get(module.api_key_name) == 'invalid' else 'question-circle text-warning' }}"></i>
+                                </span>
+                                <button type="button" class="btn btn-outline-danger delete-key" data-key="{{ module.api_key_name }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    
+                    {# Special case: OpenCTI URL #}
+                    <div class="form-group">
+                        <label for="opencti_url">OpenCTI URL</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="opencti_url" name="opencti_url" value="{{ opencti_url }}" placeholder="Enter OpenCTI URL">
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-danger delete-key" data-key="opencti_url">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save API Keys</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Processing Options</h5>
+            </div>
+            <div class="card-body">
+                <form id="processingOptionsForm">
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="auto_resolve_domain" name="auto_resolve_domain">
+                            <label class="form-check-label" for="auto_resolve_domain">
+                                Auto Resolve Domain Names to IP
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            When enabled, domain names will be automatically resolved to their IP addresses and both will be processed. When disabled, only the domain will be processed.
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="auto_resolve_url" name="auto_resolve_url">
+                            <label class="form-check-label" for="auto_resolve_url">
+                                Auto Resolve URLs to Domains
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            When enabled, URLs will be automatically resolved to their domain names and both will be processed. When disabled, only the URL will be processed.
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="auto_resolve_url_ip" name="auto_resolve_url_ip">
+                            <label class="form-check-label" for="auto_resolve_url_ip">
+                                Auto Resolve URLs (with IP host) to IP
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            When enabled, if a URL host is an IP (e.g., http://1.2.3.4/path), that IP will be processed as an IP observable.
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="hide_safe_results" name="hide_safe_results">
+                            <label class="form-check-label" for="hide_safe_results">
+                                Hide Safe/Not Found Results
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            When enabled, result cards with status "Safe", "Not Found", or "Not in Database" will be hidden from the results view.
+                        </small>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="saveProcessingOptions()">Save Options</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        // Set dark mode as default
+        document.documentElement.setAttribute('data-theme', 'dark');
+        
+        // Theme toggle functionality
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load saved theme preference
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        });
+
+        // Load saved processing options
+        document.addEventListener('DOMContentLoaded', function() {
+            // Default to true if not set (enable auto-resolve by default)
+            const savedOptions = localStorage.getItem('processingOptions');
+            if (savedOptions) {
+                const options = JSON.parse(savedOptions);
+                if (options.auto_resolve_domain !== undefined) {
+                    document.getElementById('auto_resolve_domain').checked = options.auto_resolve_domain;
+                } else {
+                    document.getElementById('auto_resolve_domain').checked = true; // Default to enabled
+                }
+                if (options.auto_resolve_url !== undefined) {
+                    document.getElementById('auto_resolve_url').checked = options.auto_resolve_url;
+                } else {
+                    document.getElementById('auto_resolve_url').checked = true; // Default to enabled
+                }
+                if (options.auto_resolve_url_ip !== undefined) {
+                    document.getElementById('auto_resolve_url_ip').checked = options.auto_resolve_url_ip;
+                } else {
+                    document.getElementById('auto_resolve_url_ip').checked = true; // Default to enabled
+                }
+                if (options.hide_safe_results !== undefined) {
+                    document.getElementById('hide_safe_results').checked = options.hide_safe_results;
+                } else {
+                    document.getElementById('hide_safe_results').checked = false; // Default to disabled
+                }
+            } else {
+                // No saved options, default to enabled for auto-resolve, disabled for hide_safe_results
+                document.getElementById('auto_resolve_domain').checked = true;
+                document.getElementById('auto_resolve_url').checked = true;
+                document.getElementById('auto_resolve_url_ip').checked = true;
+                document.getElementById('hide_safe_results').checked = false;
+            }
+        });
+
+        // Save processing options
+        function saveProcessingOptions() {
+            const options = {
+                auto_resolve_domain: document.getElementById('auto_resolve_domain').checked,
+                auto_resolve_url: document.getElementById('auto_resolve_url').checked,
+                auto_resolve_url_ip: document.getElementById('auto_resolve_url_ip').checked,
+                hide_safe_results: document.getElementById('hide_safe_results').checked
+            };
+            localStorage.setItem('processingOptions', JSON.stringify(options));
+            alert('Processing options saved!');
+        }
+
+        // Initialize API status from template
+        // Load API status from localStorage if available, otherwise use server-provided status
+        let API_STATUS = {};
+        const savedApiStatus = localStorage.getItem('apiStatus');
+        if (savedApiStatus) {
+            try {
+                API_STATUS = JSON.parse(savedApiStatus);
+                // Merge with server status to get any new keys
+                const serverStatus = {{ api_status|tojson|safe }};
+                API_STATUS = Object.assign({}, serverStatus, API_STATUS);
+            } catch (e) {
+                console.error('Error loading saved API status:', e);
+                API_STATUS = {{ api_status|tojson|safe }};
+            }
+        } else {
+            API_STATUS = {{ api_status|tojson|safe }};
+        }
+        
+        // Function to update API status in UI
+        function updateApiStatusInUI(newStatus) {
+            // Save to localStorage to persist across page loads
+            localStorage.setItem('apiStatus', JSON.stringify(newStatus));
+            // Update each API key status indicator by finding all input fields with _key suffix
+            document.querySelectorAll('input[id$="_key"]').forEach(input => {
+                const inputId = input.id;
+                const apiKeyName = inputId.replace('_key', '');
+                const status = newStatus[apiKeyName] || 'unknown';
+                
+                // Find the icon in the same input-group
+                const inputGroup = input.closest('.input-group');
+                if (inputGroup) {
+                    const icon = inputGroup.querySelector('.input-group-text i');
+                    if (icon) {
+                        icon.className = 'fas ' + (
+                            status === 'valid' ? 'fa-check-circle text-success' :
+                            status === 'invalid' ? 'fa-times-circle text-danger' :
+                            'fa-question-circle text-warning'
+                        );
+                    }
+                }
+            });
+        }
+        
+        // Handle Check API Keys button click
+        document.getElementById('checkApiKeysBtn').addEventListener('click', async function() {
+            const btn = this;
+            const originalHTML = btn.innerHTML;
+            
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+            
+            try {
+                const response = await fetch('/check-api-keys', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update API status in UI
+                    updateApiStatusInUI(data.api_status);
+                    
+                    // Show success message
+                    btn.innerHTML = '<i class="fas fa-check"></i> Done';
+                    btn.classList.remove('btn-outline-info');
+                    btn.classList.add('btn-success');
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('btn-success');
+                        btn.classList.add('btn-outline-info');
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    throw new Error(data.error || 'Failed to check API keys');
+                }
+            } catch (error) {
+                console.error('Error checking API keys:', error);
+                btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+                btn.classList.remove('btn-outline-info');
+                btn.classList.add('btn-danger');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('btn-danger');
+                    btn.classList.add('btn-outline-info');
+                    btn.disabled = false;
+                }, 3000);
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle password visibility
+            document.querySelectorAll('.toggle-password').forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const input = document.getElementById(targetId);
+                    const icon = this.querySelector('i');
+                    
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        input.type = 'password';
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
+            });
+
+            // Delete key functionality
+            document.querySelectorAll('.delete-key').forEach(button => {
+                button.addEventListener('click', function() {
+                    const keyName = this.getAttribute('data-key');
+                    const input = document.getElementById(keyName + '_key') || document.getElementById(keyName);
+                    
+                    if (confirm('Are you sure you want to delete this key?')) {
+                        // Add a hidden input to indicate this key should be deleted
+                        const deleteInput = document.createElement('input');
+                        deleteInput.type = 'hidden';
+                        deleteInput.name = `delete_${keyName}`;
+                        deleteInput.value = 'true';
+                        document.getElementById('apiKeysForm').appendChild(deleteInput);
+                        
+                        // Clear the input field
+                        input.value = '';
+                        input.placeholder = 'Enter ' + keyName.replace('_', ' ') + ' API key';
+                    }
+                });
+            });
+
+            // Prevent form submission if no changes were made
+            document.getElementById('apiKeysForm').addEventListener('submit', function(e) {
+                const hasChanges = Array.from(this.elements).some(element => 
+                    element.type === 'text' && element.value.trim() !== ''
+                );
+                
+                if (!hasChanges) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Analysis Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .result-card {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Website Analysis Results</h1>
+        <p class="timestamp">Generated on: {{ now().strftime('%Y-%m-%d %H:%M:%S') }}</p>
+        
+        {% for result in results %}
+        <div class="result-card">
+            <h2>{{ result.url }}</h2>
+            <p><strong>Domain:</strong> {{ result.domain }}</p>
+            <p><strong>DNS IPs:</strong> {{ result.dns_ips|join(', ') }}</p>
+            <p><strong>Title:</strong> {{ result.title }}</p>
+            <p><strong>Description:</strong> {{ result.description }}</p>
+            <p><strong>Keywords:</strong> {{ result.keywords }}</p>
+            
+            <h3>H1 Tags</h3>
+            <ul>
+                {% for tag in result.h1_tags %}
+                <li>{{ tag }}</li>
+                {% endfor %}
+            </ul>
+            
+            <h3>Links (first 5)</h3>
+            <ul>
+                {% for link in result.links[:5] %}
+                <li>{{ link }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html> 

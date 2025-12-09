@@ -1,0 +1,10 @@
+aiohttp>=3.9.0,<4.0.0
+python-dotenv>=1.0.0
+flask[async]>=3.0.0,<4.0.0
+requests>=2.31.0,<3.0.0
+tldextract>=5.0.0
+python-whois>=0.8.0
+pycountry>=23.0.0
+dnspython>=2.4.0,<3.0.0
+beautifulsoup4>=4.12.2,<5.0.0
+gunicorn>=21.2.0,<22.0.0
