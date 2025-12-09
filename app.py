@@ -57,6 +57,8 @@ API_KEYS_FILE = 'api_keys.json'
 _api_keys_cache = None
 _api_keys_cache_mtime = None
 
+_results_storage = {}
+
 def load_api_keys(force_reload=False):
     """
     Load API keys from api_keys.json file with caching.
@@ -71,7 +73,7 @@ def load_api_keys(force_reload=False):
     
     try:
         file_mtime = None
-        if os.path.exists(API_KEYS_FILE):
+        if os.path.exists(API_KEYS_FILE) and os.path.isfile(API_KEYS_FILE):
             file_mtime = os.path.getmtime(API_KEYS_FILE)
         
         if not force_reload and _api_keys_cache is not None:
@@ -85,7 +87,7 @@ def load_api_keys(force_reload=False):
         if 'opencti_url' not in required_keys:
             required_keys.append('opencti_url')
         
-        if os.path.exists(API_KEYS_FILE):
+        if os.path.exists(API_KEYS_FILE) and os.path.isfile(API_KEYS_FILE):
             with open(API_KEYS_FILE, 'r') as f:
                 keys = json.load(f)
                 logger.debug(f"Loaded API keys from {API_KEYS_FILE}")
@@ -1930,8 +1932,12 @@ def save():
     format_type = data.get('format')
     urls = data.get('urls', [])
     
-    # Get the current results from the session
-    results = session.get('results', [])
+    # Get results from processing storage instead of session to avoid cookie size issues
+    processing_id = session.get('processing_id')
+    results = []
+    if processing_id and hasattr(app, 'processing_storage') and processing_id in app.processing_storage:
+        results = app.processing_storage[processing_id].get('results', [])
+    
     saved_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # Embed timestamp so reloads can show when it was saved
     if isinstance(results, list):
@@ -1984,9 +1990,7 @@ def stream_results(processing_id):
                     if isinstance(r, dict) and 'saved_at' not in r:
                         r['saved_at'] = saved_at
             
-            # Also update session for export
-            if results:
-                session['results'] = results
+            # Results are stored in processing_storage, not session (to avoid cookie size limits)
             
             # Create a hash of the results to detect changes (not just count changes)
             results_json = json.dumps(results, sort_keys=True, default=str)
@@ -2020,11 +2024,13 @@ def results_status():
     if not processing_id or session.get('processing_id') != processing_id:
         return jsonify({'error': 'Invalid or missing processing ID'}), 404
     
-    results = session.get('processing_results', [])
-    completed = session.get('processing_complete', False)
-    
-    if results:
-        session['results'] = results
+    # Get results from processing storage instead of session
+    results = []
+    completed = False
+    if processing_id and hasattr(app, 'processing_storage') and processing_id in app.processing_storage:
+        storage = app.processing_storage[processing_id]
+        results = storage.get('results', [])
+        completed = storage.get('completed', False)
     
     return jsonify({
         'has_results': len(results) > 0,
@@ -2049,9 +2055,14 @@ def render_results():
             if isinstance(r, dict) and 'saved_at' not in r:
                 r['saved_at'] = saved_at
     
-    # Persist latest results in session so exports keep working even if SSE is interrupted
-    if isinstance(results, list) and results:
-        session['results'] = results
+    # Store results in processing storage (not session) to avoid cookie size limits
+    processing_id = session.get('processing_id')
+    if processing_id and isinstance(results, list) and results:
+        if not hasattr(app, 'processing_storage'):
+            app.processing_storage = {}
+        if processing_id not in app.processing_storage:
+            app.processing_storage[processing_id] = {'results': [], 'completed': False}
+        app.processing_storage[processing_id]['results'] = results
 
     # Load API status for template
     api_keys = load_api_keys()
