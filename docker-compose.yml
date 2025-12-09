@@ -17,7 +17,7 @@ services:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
       # Set BIND_HOST to 127.0.0.1 for localhost only, or 0.0.0.0 for all interfaces (default)
-      # - BIND_HOST=127.0.0.1
+      - BIND_HOST=127.0.0.1
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import socket; s=socket.socket(); s.connect((\"localhost\", 5000)); s.close()' || exit 1"]
