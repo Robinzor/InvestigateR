@@ -26,9 +26,9 @@ jobs:
       - name: Compute image name
         id: image_name
         run: |
-          IMAGE="${{ env.REGISTRY }}/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')"
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="${{ env.REGISTRY }}/${REPO_LOWER}"
           echo "image=${IMAGE}" >> $GITHUB_OUTPUT
-          echo "Computed image name: ${IMAGE}"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
