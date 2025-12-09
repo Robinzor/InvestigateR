@@ -9,7 +9,8 @@ services:
       - "127.0.0.1:5000:5000"
     volumes:
       # Use named volume for API keys (more secure than bind mount, persists across container updates)
-      - investigater_api_keys:/app/api_keys.json
+      # Mount to directory, file will be created inside
+      - investigater_api_keys:/app/data
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1

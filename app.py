@@ -53,11 +53,21 @@ def inject_datetime():
         is_module_result_safe=is_module_result_safe
     )
 
-API_KEYS_FILE = 'api_keys.json'
+# API keys file location - use data directory if it exists (Docker volume), otherwise current directory
+API_KEYS_DIR = 'data' if os.path.exists('data') and os.path.isdir('data') else '.'
+API_KEYS_FILE = os.path.join(API_KEYS_DIR, 'api_keys.json')
 
 # Ensure api_keys.json exists as a file at startup
 def ensure_api_keys_file():
     """Ensure api_keys.json exists as a file"""
+    # Ensure directory exists if using data directory
+    if API_KEYS_DIR != '.' and not os.path.exists(API_KEYS_DIR):
+        try:
+            os.makedirs(API_KEYS_DIR, exist_ok=True)
+            logger.info(f"Created directory {API_KEYS_DIR}")
+        except Exception as e:
+            logger.error(f"Error creating directory {API_KEYS_DIR}: {e}")
+    
     # Create file if it doesn't exist
     if not os.path.exists(API_KEYS_FILE) or not os.path.isfile(API_KEYS_FILE):
         try:
