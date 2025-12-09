@@ -549,33 +549,58 @@ def is_valid_url(url: str) -> bool:
     Check if a string is a valid URL.
     Recognizes:
     - URLs with protocol: http://example.com/path, https://example.com/path
+    - URLs with protocol and port: http://example.com:8080, https://example.com:8080/path
     - URLs without protocol but with path: example.com/path, example.com/path?query=1
+    - URLs without protocol but with port: example.com:8080, example.com:8080/path
     """
     # First check if it starts with http:// or https://
     if url.startswith(('http://', 'https://')):
-        url_regex = r"^https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+"
-        return bool(re.match(url_regex, url))
+        # Remove protocol to check the rest
+        url_without_protocol = url.split('://', 1)[1] if '://' in url else url
+        # Check if it has a valid domain (with optional port)
+        domain_part = url_without_protocol.split('/')[0].split('?')[0]
+        # Remove port if present
+        if ':' in domain_part:
+            domain_part = domain_part.split(':')[0]
+        # Check if domain part is valid
+        if is_valid_domain(domain_part) or is_valid_ip(domain_part):
+            return True
+        return False
     
     # Check if it's a domain with a path (e.g., example.com/path or example.com/path?query=1)
     # This indicates it's a URL without protocol
     if '/' in url or '?' in url:
         # Split by / or ? to get the domain part
         domain_part = url.split('/')[0].split('?')[0]
+        # Remove port if present
+        if ':' in domain_part:
+            domain_part = domain_part.split(':')[0]
         # Check if the domain part is a valid domain
-        if is_valid_domain(domain_part):
+        if is_valid_domain(domain_part) or is_valid_ip(domain_part):
             return True
+    
+    # Check if it's a domain with port but no path (e.g., example.com:8080)
+    if ':' in url and '/' not in url and '?' not in url:
+        domain_part = url.split(':')[0]
+        # Check if it's a valid domain (not an IP, as IP:port is handled separately)
+        if is_valid_domain(domain_part):
+            # Check if the part after : is a valid port number
+            port_part = url.split(':', 1)[1]
+            if port_part.isdigit() and 1 <= int(port_part) <= 65535:
+                return True
     
     return False
 
 def normalize_url(url: str) -> str:
     """
     Normalize a URL by adding https:// protocol if missing.
+    Preserves port numbers if present.
     
     Args:
-        url (str): The URL to normalize (e.g., "example.com/path" or "https://example.com/path")
+        url (str): The URL to normalize (e.g., "example.com/path", "example.com:8080", "https://example.com/path")
         
     Returns:
-        str: The normalized URL with protocol (e.g., "https://example.com/path")
+        str: The normalized URL with protocol (e.g., "https://example.com/path", "https://example.com:8080")
     """
     if not url.startswith(('http://', 'https://')):
         return f"https://{url}"
