@@ -1,6 +1,7 @@
 # InvestigateR 🔍
 
 **A powerful threat intelligence and analysis tool for SOC analysts**
+
 <img width="1262" height="538" alt="image" src="https://github.com/user-attachments/assets/8892ac4e-020f-4b22-866c-6b6b7aea97ee" />
 
 InvestigateR is an automated analysis tool that enables SOC analysts to quickly gather comprehensive information about IP addresses, domains, URLs, and file hashes. By querying multiple threat intelligence sources in parallel, the tool saves time and increases the effectiveness of security investigations.
