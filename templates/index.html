@@ -2491,39 +2491,6 @@
                             </div>
                             {% endif %}
 
-                            {% if "URLScanScan" in selected_tools and result.data.urlscan_scan %}
-                            <div class="col-md-6 col-lg-6 mb-2">
-                                <div class="card h-100 urlscan-box">
-                                    <div class="card-header py-1" style="background-color: var(--urlscan-scan-color) !important; color: white;">
-                                        <h6 class="mb-0"><i class="fas fa-camera mr-2"></i>URLScan Scan Results</h6>
-                                    </div>
-                                    <div class="card-body p-2">
-                                        {% if result.data.urlscan_scan.error %}
-                                        <div class="alert alert-warning py-1 mb-1">
-                                            <small>{{ result.data.urlscan_scan.error }}</small>
-                                        </div>
-                                        {% endif %}
-                                        
-                                        {% if result.data.urlscan_scan.message %}
-                                        <div class="alert alert-info py-1 mb-1">
-                                            <small>{{ result.data.urlscan_scan.message }}</small>
-                                        </div>
-                                        {% endif %}
-                                        
-                                        {% if result.data.urlscan_scan.scan_id %}
-                                        <div class="row">
-                                            <div class="col-12">
-                                                <p class="mb-1"><small><strong>Scan ID:</strong> {{ result.data.urlscan_scan.scan_id }}</small></p>
-                                                {% if result.data.urlscan_scan.result_url %}
-                                                <a href="{{ result.data.urlscan_scan.result_url }}" class="btn btn-sm btn-block py-0 text-white" style="background-color: var(--url-color);" target="_blank">View Scan Results</a>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
                         {% endif %}
 
                         {% if "OpenCTI" in selected_tools and result.data.opencti %}
@@ -3621,7 +3588,6 @@
             const apiTools = {
                 'AbuseIPDB': 'abuseipdb',
                 'IPInfo': 'ipinfo',
-                'URLScanScan': 'urlscan',
                 'VirusTotal': 'virustotal',
                 'OpenCTI': 'opencti'
             };
@@ -3682,7 +3648,6 @@
             const apiTools = {
                 'AbuseIPDB': 'abuseipdb',
                 'IPInfo': 'ipinfo',
-                'URLScanScan': 'urlscan',
                 'VirusTotal': 'virustotal',
                 'OpenCTI': 'opencti'
             };
@@ -4029,25 +3994,6 @@
             }
         });
 
-        // Show/hide URLScan options when URLScan is selected
-        document.getElementById('urlscan_scan').addEventListener('change', function() {
-            const urlscanOptions = this.parentElement.querySelector('.urlscan-options');
-            urlscanOptions.style.display = this.checked ? 'block' : 'none';
-        });
-
-        // Disable scan options if no API key is available
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlscanAction = document.querySelector('select[name="urlscan_scan_type"]');
-            const urlscanCheckbox = document.getElementById('urlscan_scan');
-            
-            if (API_STATUS.urlscan === 'invalid') {
-                const scanOptions = urlscanAction.querySelectorAll('option[value="public"], option[value="private"]');
-                scanOptions.forEach(function(option) {
-                    option.disabled = true;
-                    option.title = 'API key required for scanning';
-                });
-            }
-        });
 
         // Remove the old screenshot modal click handler since we're using hover now
         $('.screenshot-preview').off('click');

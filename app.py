@@ -649,17 +649,13 @@ async def process_observable(observable: str, selected_tools: List[str], api_key
     if form_data is None:
         try:
             form_data = {
-                'urlscan_scan_type': request.form.get('urlscan_scan_type', 'private'),
                 'crtsh_exclude_expired': request.form.get('crtsh_exclude_expired') == 'on'
             }
         except RuntimeError:
             form_data = {
-                'urlscan_scan_type': 'private',
                 'crtsh_exclude_expired': False
             }
     
-    if "URLScanScan" in selected_tools:
-        tool_kwargs['scan_type'] = form_data.get('urlscan_scan_type', 'private')
     if "crt.sh" in selected_tools:
         tool_kwargs['exclude_expired'] = form_data.get('crtsh_exclude_expired', False)
     
@@ -938,7 +934,6 @@ async def index():
         
         # Extract form data before starting background thread (request context won't be available there)
         form_data = {
-            'urlscan_scan_type': request.form.get('urlscan_scan_type', 'private'),
             'crtsh_exclude_expired': request.form.get('crtsh_exclude_expired') == 'on',
             'auto_resolve_domain': request.form.get('auto_resolve_domain', 'false') == 'true',
             'auto_resolve_url': request.form.get('auto_resolve_url', 'false') == 'true',
