@@ -102,6 +102,7 @@ _results_storage = {}
 def load_api_keys(force_reload=False):
     """
     Load API keys from api_keys.json file with caching.
+    Optimized for Docker volumes - minimizes file system checks.
     
     Args:
         force_reload: If True, force reload even if cached
@@ -112,17 +113,33 @@ def load_api_keys(force_reload=False):
     global _api_keys_cache, _api_keys_cache_mtime
     
     try:
+        # Return cached version immediately if available and not forcing reload
+        if not force_reload and _api_keys_cache is not None:
+            # Only check file modification time if we have a cached mtime
+            if _api_keys_cache_mtime is not None:
+                api_keys_file = get_api_keys_file()
+                try:
+                    if os.path.exists(api_keys_file) and os.path.isfile(api_keys_file):
+                        file_mtime = os.path.getmtime(api_keys_file)
+                        if file_mtime == _api_keys_cache_mtime:
+                            return _api_keys_cache
+                except OSError:
+                    # File system error (e.g., volume issue) - use cache
+                    return _api_keys_cache
+            else:
+                # No mtime cached, return cache anyway (file doesn't exist or wasn't checked)
+                return _api_keys_cache
+        
         # Get current file path (may change if data directory is created)
         api_keys_file = get_api_keys_file()
         
         file_mtime = None
-        if os.path.exists(api_keys_file) and os.path.isfile(api_keys_file):
-            file_mtime = os.path.getmtime(api_keys_file)
-        
-        if not force_reload and _api_keys_cache is not None:
-            if file_mtime is None:
-                return _api_keys_cache
-            elif _api_keys_cache_mtime == file_mtime:
+        try:
+            if os.path.exists(api_keys_file) and os.path.isfile(api_keys_file):
+                file_mtime = os.path.getmtime(api_keys_file)
+        except OSError as e:
+            logger.warning(f"Error checking file {api_keys_file}: {e}, using cache if available")
+            if _api_keys_cache is not None:
                 return _api_keys_cache
         
         from utils.module_helpers import get_required_api_keys

@@ -11,6 +11,8 @@ services:
       # Use named volume for API keys (more secure than bind mount, persists across container updates)
       # Mount to directory, file will be created inside
       - investigater_api_keys:/app/data
+      # Alternative: Use bind mount for better performance on Windows (uncomment line below and comment named volume above)
+      # - ./api_keys.json:/app/api_keys.json
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1

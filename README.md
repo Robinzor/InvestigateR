@@ -88,6 +88,8 @@ The application will be available at `http://localhost:5000`
 
 **Note:** API keys are stored in a Docker named volume (persists across container updates). Configure them through the web interface after starting.
 
+**Performance Note:** Named volumes can be slower on Windows. If you experience performance issues, you can use a bind mount instead by uncommenting the volume line in `docker-compose.yml` and creating `api_keys.json` on your host first.
+
 ### Option 2: Docker (Manual)
 
 #### From GitHub Container Registry (GHCR)
