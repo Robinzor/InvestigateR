@@ -160,11 +160,16 @@ The application is now available at `http://localhost:5000`
 
 **Note:** Some tools work without an API key, but with limited functionality or rate limits.
 
-### API Keys File (Alternative)
-
 ### API Keys Storage
 
-API keys are stored in `api_keys.json` inside the container. For local installations, you can also directly create the `api_keys.json` file:
+API keys are stored automatically by the application:
+
+- **Docker**: Keys are stored in a named volume at `/app/data/api_keys.json` (persists across container updates)
+- **Local Installation**: Keys are stored in `api_keys.json` in the project root directory
+
+The application automatically creates the file with default structure when you first save API keys through the web interface.
+
+**Alternative (Local Installation Only):** You can also manually create the `api_keys.json` file in the project root:
 
 ```json
 {
@@ -275,7 +280,9 @@ Results are displayed in card format:
 
 ## 🔒 Security Considerations
 
-- **API Keys** - Keep `api_keys.json` secure and add it to `.gitignore`
+- **API Keys** - API keys are stored securely:
+  - **Docker**: Stored in named volume (not accessible from host filesystem)
+  - **Local**: Keep `api_keys.json` secure and ensure it's in `.gitignore`
 - **Network** - The application makes outbound connections to external APIs
 - **Data** - Results may contain sensitive information - store securely
 - **Rate Limits** - Respect rate limits of external APIs

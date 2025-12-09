@@ -54,33 +54,42 @@ def inject_datetime():
     )
 
 # API keys file location - use data directory if it exists (Docker volume), otherwise current directory
-API_KEYS_DIR = 'data' if os.path.exists('data') and os.path.isdir('data') else '.'
-API_KEYS_FILE = os.path.join(API_KEYS_DIR, 'api_keys.json')
+def get_api_keys_file():
+    """Get the API keys file path, checking for data directory (Docker volume) or using current directory"""
+    if os.path.exists('data') and os.path.isdir('data'):
+        return os.path.join('data', 'api_keys.json')
+    return 'api_keys.json'
+
+API_KEYS_FILE = get_api_keys_file()
 
 # Ensure api_keys.json exists as a file at startup
 def ensure_api_keys_file():
     """Ensure api_keys.json exists as a file"""
+    # Get current file path (may change if data directory is created)
+    api_keys_file = get_api_keys_file()
+    
     # Ensure directory exists if using data directory
-    if API_KEYS_DIR != '.' and not os.path.exists(API_KEYS_DIR):
-        try:
-            os.makedirs(API_KEYS_DIR, exist_ok=True)
-            logger.info(f"Created directory {API_KEYS_DIR}")
-        except Exception as e:
-            logger.error(f"Error creating directory {API_KEYS_DIR}: {e}")
+    if api_keys_file.startswith('data/'):
+        if not os.path.exists('data'):
+            try:
+                os.makedirs('data', exist_ok=True)
+                logger.info("Created data directory")
+            except Exception as e:
+                logger.error(f"Error creating data directory: {e}")
     
     # Create file if it doesn't exist
-    if not os.path.exists(API_KEYS_FILE) or not os.path.isfile(API_KEYS_FILE):
+    if not os.path.exists(api_keys_file) or not os.path.isfile(api_keys_file):
         try:
             from utils.module_helpers import get_required_api_keys
             required_keys = list(get_required_api_keys())
             if 'opencti_url' not in required_keys:
                 required_keys.append('opencti_url')
             default_keys = {key: "" for key in required_keys}
-            with open(API_KEYS_FILE, 'w') as f:
+            with open(api_keys_file, 'w') as f:
                 json.dump(default_keys, f, indent=2)
-            logger.info(f"Created {API_KEYS_FILE} with default keys")
+            logger.info(f"Created {api_keys_file} with default keys")
         except Exception as e:
-            logger.error(f"Error creating {API_KEYS_FILE}: {e}")
+            logger.error(f"Error creating {api_keys_file}: {e}")
 
 # Initialize API keys file at module load
 ensure_api_keys_file()
@@ -103,10 +112,12 @@ def load_api_keys(force_reload=False):
     global _api_keys_cache, _api_keys_cache_mtime
     
     try:
-        # Check if API_KEYS_FILE is a directory (Docker volume issue) and remove it
+        # Get current file path (may change if data directory is created)
+        api_keys_file = get_api_keys_file()
+        
         file_mtime = None
-        if os.path.exists(API_KEYS_FILE) and os.path.isfile(API_KEYS_FILE):
-            file_mtime = os.path.getmtime(API_KEYS_FILE)
+        if os.path.exists(api_keys_file) and os.path.isfile(api_keys_file):
+            file_mtime = os.path.getmtime(api_keys_file)
         
         if not force_reload and _api_keys_cache is not None:
             if file_mtime is None:
@@ -119,10 +130,10 @@ def load_api_keys(force_reload=False):
         if 'opencti_url' not in required_keys:
             required_keys.append('opencti_url')
         
-        if os.path.exists(API_KEYS_FILE) and os.path.isfile(API_KEYS_FILE):
-            with open(API_KEYS_FILE, 'r') as f:
+        if os.path.exists(api_keys_file) and os.path.isfile(api_keys_file):
+            with open(api_keys_file, 'r') as f:
                 keys = json.load(f)
-                logger.debug(f"Loaded API keys from {API_KEYS_FILE}")
+                logger.debug(f"Loaded API keys from {api_keys_file}")
                 for key in required_keys:
                     if key not in keys:
                         keys[key] = ""
@@ -136,7 +147,7 @@ def load_api_keys(force_reload=False):
                 _api_keys_cache_mtime = file_mtime
                 return keys
         else:
-            logger.debug(f"{API_KEYS_FILE} not found, creating default keys")
+            logger.debug(f"{api_keys_file} not found, creating default keys")
             default_keys = {key: "" for key in required_keys}
             _api_keys_cache = default_keys
             _api_keys_cache_mtime = None
@@ -155,13 +166,25 @@ def load_api_keys(force_reload=False):
 def save_api_keys(keys):
     global _api_keys_cache, _api_keys_cache_mtime
     
+    # Get current file path (may change if data directory is created)
+    api_keys_file = get_api_keys_file()
+    
+    # Ensure directory exists if using data directory
+    if api_keys_file.startswith('data/'):
+        if not os.path.exists('data'):
+            try:
+                os.makedirs('data', exist_ok=True)
+                logger.info("Created data directory")
+            except Exception as e:
+                logger.error(f"Error creating data directory: {e}")
+    
     existing_keys = load_api_keys()
     
     for key, value in keys.items():
         if value and value.strip():
             existing_keys[key] = value.strip()
     
-    with open(API_KEYS_FILE, 'w') as f:
+    with open(api_keys_file, 'w') as f:
         json.dump(existing_keys, f)
     
     _api_keys_cache = None
@@ -1831,15 +1854,18 @@ def delete_key():
         existing_keys[key_name] = ""
         logger.info(f"Key {key_name} set to empty string")
         
+        # Get current file path
+        api_keys_file = get_api_keys_file()
+        
         # Save updated keys
-        with open(API_KEYS_FILE, 'w') as f:
+        with open(api_keys_file, 'w') as f:
             json.dump(existing_keys, f)
         
         # Invalidate cache - next load will reload from file
         global _api_keys_cache, _api_keys_cache_mtime
         _api_keys_cache = None
         _api_keys_cache_mtime = None
-        logger.info(f"Updated keys saved to {API_KEYS_FILE}")
+        logger.info(f"Updated keys saved to {api_keys_file}")
         
         return jsonify({'success': True})
     except Exception as e:
