@@ -24,6 +24,6 @@ COPY . .
 # Expose app port
 EXPOSE 5000
 
-# Default command: gunicorn
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
+# Default command: gunicorn with increased timeout for long-running streaming requests
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "--timeout", "360", "--keep-alive", "5", "app:app"]
 

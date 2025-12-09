@@ -16,6 +16,7 @@ import ssl
 import requests
 from bs4 import BeautifulSoup
 import io
+import atexit
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -1658,6 +1659,39 @@ async def index():
                             loop.run_until_complete(asyncio.gather(*still_pending, return_exceptions=True))
                         except Exception as e:
                             logger.warning(f"Error cancelling tasks: {e}")
+                
+                # Cleanup aiohttp sessions before closing loop
+                try:
+                    # Import modules to access their shared sessions
+                    import utils.modules.domainblocklists.query as domain_module
+                    import utils.modules.ipblocklists.query as ip_module
+                    
+                    async def cleanup_sessions():
+                        # Close domain blocklists session
+                        if hasattr(domain_module, '_shared_session') and domain_module._shared_session and not domain_module._shared_session.closed:
+                            try:
+                                await domain_module._shared_session.close()
+                                logger.debug("Closed domain blocklists aiohttp session")
+                            except Exception as e:
+                                logger.warning(f"Error closing domain blocklists session: {e}")
+                        
+                        # Close IP blocklists session
+                        if hasattr(ip_module, '_shared_session') and ip_module._shared_session and not ip_module._shared_session.closed:
+                            try:
+                                await ip_module._shared_session.close()
+                                logger.debug("Closed IP blocklists aiohttp session")
+                            except Exception as e:
+                                logger.warning(f"Error closing IP blocklists session: {e}")
+                    
+                    # Run cleanup in the loop before closing
+                    try:
+                        loop.run_until_complete(cleanup_sessions())
+                    except Exception as e:
+                        logger.warning(f"Error cleaning up aiohttp sessions: {e}")
+                except ImportError:
+                    pass  # Modules might not be imported
+                except Exception as e:
+                    logger.warning(f"Error during session cleanup: {e}")
             finally:
                 loop.close()
         
@@ -1966,6 +2000,7 @@ def stream_results(processing_id):
         last_results_hash = None
         max_wait = 300  # 5 minutes max
         saved_at = None
+        last_heartbeat = time.time()
         
         for i in range(max_wait):
             # Check processing storage for this processing ID
@@ -2001,6 +2036,13 @@ def stream_results(processing_id):
                 yield f"data: {json.dumps(data)}\n\n"
                 last_count = len(results)
                 last_results_hash = results_hash
+                last_heartbeat = time.time()
+            
+            # Send heartbeat every 10 seconds to keep connection alive and prevent gunicorn timeout
+            current_time = time.time()
+            if current_time - last_heartbeat >= 10:
+                yield f": heartbeat\n\n"  # SSE comment line to keep connection alive
+                last_heartbeat = current_time
             
             if completed:
                 yield f"data: {json.dumps({'completed': True, 'final': True})}\n\n"
