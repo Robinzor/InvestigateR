@@ -25,5 +25,6 @@ COPY . .
 EXPOSE 5000
 
 # Default command: gunicorn with increased timeout for long-running streaming requests
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "--timeout", "360", "--keep-alive", "5", "app:app"]
+# Use BIND_HOST env var to set binding (default: 0.0.0.0 for all interfaces, use 127.0.0.1 for localhost only)
+CMD sh -c 'gunicorn -b ${BIND_HOST:-0.0.0.0}:5000 --timeout 360 --keep-alive 5 app:app'
 

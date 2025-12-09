@@ -96,9 +96,17 @@ The application will be available at `http://localhost:5000`
 # Pull the latest version
 docker pull ghcr.io/robinzor/investigater:latest
 
-# Run the container
+# Run the container (accessible from all interfaces)
 docker run -d \
   -p 5000:5000 \
+  -v $(pwd)/api_keys.json:/app/api_keys.json \
+  --name InvestigateR \
+  ghcr.io/robinzor/investigater:latest
+
+# Run with localhost-only binding (more secure)
+docker run -d \
+  -p 127.0.0.1:5000:5000 \
+  -e BIND_HOST=127.0.0.1 \
   -v $(pwd)/api_keys.json:/app/api_keys.json \
   --name InvestigateR \
   ghcr.io/robinzor/investigater:latest
