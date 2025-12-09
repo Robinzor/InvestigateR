@@ -7,14 +7,13 @@ services:
       dockerfile: Dockerfile
     container_name: investigater
     ports:
-      - "5000:5000"
+      # Map to localhost only on host (127.0.0.1:5000 -> container:5000)
+      - "127.0.0.1:5000:5000"
     volumes:
       - ./api_keys.json:/app/api_keys.json:ro
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
-      # Set BIND_HOST to 127.0.0.1 for localhost only, or 0.0.0.0 for all interfaces (default)
-      - BIND_HOST=127.0.0.1
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import socket; s=socket.socket(); s.connect((\"localhost\", 5000)); s.close()' || exit 1"]
