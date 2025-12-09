@@ -14,14 +14,14 @@ services:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
-
-volumes:
-  investigater_api_keys:
-    driver: local
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import socket; s=socket.socket(); s.connect((\"localhost\", 5000)); s.close()' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  investigater_api_keys:
+    driver: local
 
