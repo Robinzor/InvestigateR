@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   investigater:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/robinzor/investigater:latest
     container_name: investigater
     ports:
       # Map to localhost only on host (127.0.0.1:5000 -> container:5000)
