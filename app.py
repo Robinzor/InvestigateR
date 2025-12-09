@@ -1,6 +1,7 @@
 import os
 import asyncio
 import re
+import shutil
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file, session, Response, stream_with_context
 import json
 import logging
@@ -55,6 +56,43 @@ def inject_datetime():
 
 API_KEYS_FILE = 'api_keys.json'
 
+# Ensure api_keys.json exists as a file (not a directory) at startup
+def ensure_api_keys_file():
+    """Ensure api_keys.json exists as a file, not a directory"""
+    if os.path.exists(API_KEYS_FILE):
+        if os.path.isdir(API_KEYS_FILE):
+            logger.warning(f"{API_KEYS_FILE} is a directory, removing it")
+            try:
+                os.rmdir(API_KEYS_FILE)
+            except OSError:
+                try:
+                    shutil.rmtree(API_KEYS_FILE)
+                except Exception as e:
+                    logger.error(f"Error removing directory {API_KEYS_FILE}: {e}")
+        elif not os.path.isfile(API_KEYS_FILE):
+            logger.warning(f"{API_KEYS_FILE} exists but is not a file, removing it")
+            try:
+                os.remove(API_KEYS_FILE)
+            except Exception as e:
+                logger.error(f"Error removing {API_KEYS_FILE}: {e}")
+    
+    # Create file if it doesn't exist
+    if not os.path.exists(API_KEYS_FILE):
+        try:
+            from utils.module_helpers import get_required_api_keys
+            required_keys = list(get_required_api_keys())
+            if 'opencti_url' not in required_keys:
+                required_keys.append('opencti_url')
+            default_keys = {key: "" for key in required_keys}
+            with open(API_KEYS_FILE, 'w') as f:
+                json.dump(default_keys, f, indent=2)
+            logger.info(f"Created {API_KEYS_FILE} with default keys")
+        except Exception as e:
+            logger.error(f"Error creating {API_KEYS_FILE}: {e}")
+
+# Initialize API keys file at module load
+ensure_api_keys_file()
+
 _api_keys_cache = None
 _api_keys_cache_mtime = None
 
@@ -73,6 +111,19 @@ def load_api_keys(force_reload=False):
     global _api_keys_cache, _api_keys_cache_mtime
     
     try:
+        # Check if API_KEYS_FILE is a directory (Docker volume issue) and remove it
+        if os.path.exists(API_KEYS_FILE) and os.path.isdir(API_KEYS_FILE):
+            logger.warning(f"{API_KEYS_FILE} is a directory, removing it to create a file")
+            try:
+                os.rmdir(API_KEYS_FILE)
+            except OSError as e:
+                logger.error(f"Error removing directory {API_KEYS_FILE}: {e}")
+                # If directory is not empty, try to remove it recursively
+                try:
+                    shutil.rmtree(API_KEYS_FILE)
+                except Exception as e2:
+                    logger.error(f"Error removing directory tree {API_KEYS_FILE}: {e2}")
+        
         file_mtime = None
         if os.path.exists(API_KEYS_FILE) and os.path.isfile(API_KEYS_FILE):
             file_mtime = os.path.getmtime(API_KEYS_FILE)
@@ -123,6 +174,21 @@ def load_api_keys(force_reload=False):
 
 def save_api_keys(keys):
     global _api_keys_cache, _api_keys_cache_mtime
+    
+    # Check if API_KEYS_FILE is a directory (Docker volume issue) and remove it
+    if os.path.exists(API_KEYS_FILE) and os.path.isdir(API_KEYS_FILE):
+        logger.warning(f"{API_KEYS_FILE} is a directory, removing it to create a file")
+        try:
+            os.rmdir(API_KEYS_FILE)
+        except OSError as e:
+            logger.error(f"Error removing directory {API_KEYS_FILE}: {e}")
+            # If directory is not empty, try to remove it recursively (shouldn't happen, but just in case)
+            import shutil
+            try:
+                shutil.rmtree(API_KEYS_FILE)
+            except Exception as e2:
+                logger.error(f"Error removing directory tree {API_KEYS_FILE}: {e2}")
+                raise
     
     existing_keys = load_api_keys()
     
@@ -1787,6 +1853,20 @@ def delete_key():
             return jsonify({'success': False, 'error': 'No key name provided'})
         
         logger.info(f"Attempting to delete key: {key_name}")
+        
+        # Check if API_KEYS_FILE is a directory (Docker volume issue) and remove it
+        if os.path.exists(API_KEYS_FILE) and os.path.isdir(API_KEYS_FILE):
+            logger.warning(f"{API_KEYS_FILE} is a directory, removing it to create a file")
+            try:
+                os.rmdir(API_KEYS_FILE)
+            except OSError as e:
+                logger.error(f"Error removing directory {API_KEYS_FILE}: {e}")
+                # If directory is not empty, try to remove it recursively
+                try:
+                    shutil.rmtree(API_KEYS_FILE)
+                except Exception as e2:
+                    logger.error(f"Error removing directory tree {API_KEYS_FILE}: {e2}")
+                    return jsonify({'success': False, 'error': f'Cannot write to {API_KEYS_FILE} - it is a directory'})
         
         # Load existing keys
         existing_keys = load_api_keys()

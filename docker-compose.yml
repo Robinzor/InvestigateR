@@ -8,11 +8,16 @@ services:
       # Map to localhost only on host (127.0.0.1:5000 -> container:5000)
       - "127.0.0.1:5000:5000"
     volumes:
-      - ./api_keys.json:/app/api_keys.json:ro
+      # Use named volume for API keys (more secure than bind mount, persists across container updates)
+      - investigater_api_keys:/app/api_keys.json
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+
+volumes:
+  investigater_api_keys:
+    driver: local
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import socket; s=socket.socket(); s.connect((\"localhost\", 5000)); s.close()' || exit 1"]
       interval: 30s

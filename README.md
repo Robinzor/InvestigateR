@@ -86,7 +86,7 @@ docker-compose down
 
 The application will be available at `http://localhost:5000`
 
-**Note:** Make sure to create an `api_keys.json` file in the project root before starting, or configure API keys through the web interface after starting.
+**Note:** API keys are stored in a Docker named volume (persists across container updates). Configure them through the web interface after starting.
 
 ### Option 2: Docker (Manual)
 
@@ -99,7 +99,6 @@ docker pull ghcr.io/robinzor/investigater:latest
 # Run the container (accessible from all interfaces)
 docker run -d \
   -p 5000:5000 \
-  -v $(pwd)/api_keys.json:/app/api_keys.json \
   --name InvestigateR \
   ghcr.io/robinzor/investigater:latest
 
@@ -107,7 +106,6 @@ docker run -d \
 docker run -d \
   -p 127.0.0.1:5000:5000 \
   -e BIND_HOST=127.0.0.1 \
-  -v $(pwd)/api_keys.json:/app/api_keys.json \
   --name InvestigateR \
   ghcr.io/robinzor/investigater:latest
 ```
@@ -125,7 +123,6 @@ docker build -t InvestigateR:latest .
 # Run the container
 docker run -d \
   -p 5000:5000 \
-  -v $(pwd)/api_keys.json:/app/api_keys.json \
   --name InvestigateR \
   InvestigateR:latest
 ```
@@ -165,7 +162,9 @@ The application is now available at `http://localhost:5000`
 
 ### API Keys File (Alternative)
 
-You can also directly create the `api_keys.json` file:
+### API Keys Storage
+
+API keys are stored in `api_keys.json` inside the container. For local installations, you can also directly create the `api_keys.json` file:
 
 ```json
 {
