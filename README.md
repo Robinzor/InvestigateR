@@ -92,14 +92,14 @@ The application will be available at `http://localhost:5000`
 
 ```bash
 # Pull the latest version
-docker pull ghcr.io/robinzor/investigater:latest
+docker pull ghcr.io/robinzor/InvestigateR:latest
 
 # Run the container
 docker run -d \
   -p 5000:5000 \
   -v $(pwd)/api_keys.json:/app/api_keys.json \
   --name InvestigateR \
-  ghcr.io/robinzor/investigater:latest
+  ghcr.io/robinzor/InvestigateR:latest
 ```
 
 #### Local Build
@@ -252,7 +252,7 @@ The application has automatic CI/CD via GitHub Actions:
 
 1. Push to `main`/`master` → Build and push `:latest` tag
 2. Push a tag (e.g., `v1.0.0`) → Build and push version tag
-3. Images are available at `ghcr.io/robinzor/investigater`
+3. Images are available at `ghcr.io/robinzor/InvestigateR`
 
 ## 📊 Results Display
 
