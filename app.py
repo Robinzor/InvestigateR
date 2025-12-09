@@ -7,6 +7,7 @@ import logging
 from typing import List, Dict, Any, Optional
 import aiohttp
 import socket
+import time
 from datetime import datetime
 from utils.module_executor import module_executor
 from utils.modules.base import InputType
@@ -1872,6 +1873,136 @@ async def check_api_keys():
         logger.error(f"Error checking API keys: {str(e)}")
         # SECURITY: Don't expose internal error details to client
         return jsonify({'success': False, 'error': 'An error occurred while checking API keys'}), 500
+
+@app.route('/ping-test', methods=['POST'])
+def ping_test():
+    """Test connectivity to a host using Python socket (works in Docker)"""
+    try:
+        data = request.get_json()
+        host = data.get('host', '').strip()
+        port = data.get('port', 80)  # Default to port 80 for HTTP
+        
+        if not host:
+            return jsonify({'success': False, 'error': 'No host provided'}), 400
+        
+        # Extract hostname from URL if provided
+        if '://' in host:
+            try:
+                parsed = urlparse(host)
+                host = parsed.netloc.split(':')[0]  # Remove port if present
+                if parsed.port:
+                    port = parsed.port
+                elif parsed.scheme == 'https':
+                    port = 443
+                elif parsed.scheme == 'http':
+                    port = 80
+            except Exception as e:
+                logger.warning(f"Error parsing URL {host}: {e}")
+                return jsonify({'success': False, 'error': 'Invalid host format'}), 400
+        
+        # Remove port if present in host string
+        if ':' in host and not host.startswith('['):  # IPv6 addresses use [::1]:port format
+            host = host.split(':')[0]
+        
+        logger.info(f"Testing connectivity to: {host}:{port}")
+        
+        # Test DNS resolution first
+        try:
+            ip_address = socket.gethostbyname(host)
+            dns_resolved = True
+        except socket.gaierror as e:
+            return jsonify({
+                'success': False,
+                'error': f'DNS resolution failed: {str(e)}',
+                'host': host,
+                'dns_resolved': False
+            }), 400
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Error resolving hostname: {str(e)}',
+                'host': host,
+                'dns_resolved': False
+            }), 400
+        
+        # Test TCP connectivity with timing
+        results = []
+        times = []
+        packets_sent = 4
+        packets_received = 0
+        
+        for i in range(packets_sent):
+            try:
+                start_time = time.time()
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(5)  # 5 second timeout
+                result = sock.connect_ex((ip_address, port))
+                elapsed = (time.time() - start_time) * 1000  # Convert to milliseconds
+                sock.close()
+                
+                if result == 0:
+                    packets_received += 1
+                    times.append(elapsed)
+                    results.append({
+                        'packet': i + 1,
+                        'success': True,
+                        'time': f"{elapsed:.2f}ms"
+                    })
+                else:
+                    results.append({
+                        'packet': i + 1,
+                        'success': False,
+                        'error': f'Connection failed (error code: {result})'
+                    })
+                    
+            except socket.timeout:
+                results.append({
+                    'packet': i + 1,
+                    'success': False,
+                    'error': 'Connection timeout'
+                })
+            except Exception as e:
+                results.append({
+                    'packet': i + 1,
+                    'success': False,
+                    'error': str(e)
+                })
+            
+            # Small delay between attempts
+            if i < packets_sent - 1:
+                time.sleep(0.5)
+        
+        # Calculate statistics
+        stats = {
+            'packets_sent': packets_sent,
+            'packets_received': packets_received,
+            'packet_loss': f"{((packets_sent - packets_received) / packets_sent * 100):.1f}%",
+            'dns_resolved': dns_resolved,
+            'ip_address': ip_address
+        }
+        
+        if times:
+            stats['min_time'] = f"{min(times):.2f}ms"
+            stats['max_time'] = f"{max(times):.2f}ms"
+            stats['avg_time'] = f"{(sum(times) / len(times)):.2f}ms"
+        else:
+            stats['min_time'] = None
+            stats['max_time'] = None
+            stats['avg_time'] = None
+        
+        success = packets_received > 0
+        
+        return jsonify({
+            'success': success,
+            'host': host,
+            'port': port,
+            'results': results,
+            'stats': stats
+        })
+            
+    except Exception as e:
+        logger.error(f"Error in ping_test: {e}")
+        return jsonify({'success': False, 'error': f'An error occurred while testing connectivity: {str(e)}'}), 500
 
 @app.route('/delete_key', methods=['POST'])
 def delete_key():

@@ -148,6 +148,38 @@
 
         <div class="card mt-4">
             <div class="card-header">
+                <h5 class="mb-0">Connectivity Test</h5>
+            </div>
+            <div class="card-body">
+                <form id="pingTestForm">
+                    <div class="form-group">
+                        <label for="pingHost">Host (IP, Domain, or URL)</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="pingHost" placeholder="e.g., 8.8.8.8, google.com, or https://example.com" value="">
+                            <div class="input-group-append">
+                                <input type="number" class="form-control" id="pingPort" placeholder="Port" value="80" min="1" max="65535" style="max-width: 100px;">
+                            </div>
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-primary" id="pingTestBtn">
+                                    <i class="fas fa-network-wired"></i> Test Connectivity
+                                </button>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">
+                            Test TCP connectivity to a host. Default port is 80 (HTTP). Port 443 for HTTPS.
+                        </small>
+                    </div>
+                </form>
+                <div id="pingResults" style="display: none;">
+                    <hr>
+                    <h6>Test Results</h6>
+                    <div id="pingResultsContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
                 <h5 class="mb-0">Processing Options</h5>
             </div>
             <div class="card-body">
@@ -417,6 +449,101 @@
                 
                 if (!hasChanges) {
                     e.preventDefault();
+                }
+            });
+
+            // Ping test functionality
+            document.getElementById('pingTestBtn').addEventListener('click', async function() {
+                const btn = this;
+                const originalHTML = btn.innerHTML;
+                const hostInput = document.getElementById('pingHost');
+                const portInput = document.getElementById('pingPort');
+                const resultsDiv = document.getElementById('pingResults');
+                const resultsContent = document.getElementById('pingResultsContent');
+                
+                const host = hostInput.value.trim();
+                const port = parseInt(portInput.value) || 80;
+                
+                if (!host) {
+                    alert('Please enter a host to test');
+                    return;
+                }
+                
+                // Disable button and show loading
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+                resultsDiv.style.display = 'none';
+                
+                try {
+                    const response = await fetch('/ping-test', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            host: host,
+                            port: port
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Build results HTML
+                        let html = `<div class="alert alert-success">
+                            <strong>✓ Connection Successful</strong><br>
+                            Host: <code>${data.host}</code> (${data.stats.ip_address})<br>
+                            Port: <code>${data.port}</code><br>
+                            Packets: ${data.stats.packets_received}/${data.stats.packets_sent} received (${data.stats.packet_loss} loss)
+                        </div>`;
+                        
+                        if (data.stats.avg_time) {
+                            html += `<div class="alert alert-info">
+                                <strong>Timing Statistics:</strong><br>
+                                Min: ${data.stats.min_time} | 
+                                Avg: ${data.stats.avg_time} | 
+                                Max: ${data.stats.max_time}
+                            </div>`;
+                        }
+                        
+                        html += '<div class="table-responsive"><table class="table table-sm table-bordered">';
+                        html += '<thead><tr><th>Packet</th><th>Status</th><th>Time/Error</th></tr></thead><tbody>';
+                        
+                        data.results.forEach(result => {
+                            const statusClass = result.success ? 'success' : 'danger';
+                            const statusIcon = result.success ? '✓' : '✗';
+                            html += `<tr class="table-${statusClass}">
+                                <td>${result.packet}</td>
+                                <td>${statusIcon} ${result.success ? 'Success' : 'Failed'}</td>
+                                <td>${result.time || result.error || 'N/A'}</td>
+                            </tr>`;
+                        });
+                        
+                        html += '</tbody></table></div>';
+                        resultsContent.innerHTML = html;
+                        resultsDiv.style.display = 'block';
+                    } else {
+                        resultsContent.innerHTML = `<div class="alert alert-danger">
+                            <strong>✗ Connection Failed</strong><br>
+                            ${data.error || 'Unknown error'}<br>
+                            ${data.host ? `Host: <code>${data.host}</code>` : ''}
+                            ${data.stats && !data.stats.dns_resolved ? '<br>DNS resolution failed' : ''}
+                        </div>`;
+                        resultsDiv.style.display = 'block';
+                    }
+                    
+                    btn.innerHTML = originalHTML;
+                    btn.disabled = false;
+                    
+                } catch (error) {
+                    console.error('Error testing connectivity:', error);
+                    resultsContent.innerHTML = `<div class="alert alert-danger">
+                        <strong>Error</strong><br>
+                        ${error.message || 'An error occurred while testing connectivity'}
+                    </div>`;
+                    resultsDiv.style.display = 'block';
+                    btn.innerHTML = originalHTML;
+                    btn.disabled = false;
                 }
             });
         });
