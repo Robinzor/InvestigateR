@@ -95,21 +95,21 @@ The application will be available at `http://localhost:5000`
 #### From GitHub Container Registry (GHCR)
 
 ```bash
-# Pull the latest version
-docker pull ghcr.io/robinzor/investigater:latest
+# Pull the main version
+docker pull ghcr.io/robinzor/investigater:main
 
 # Run the container (accessible from all interfaces)
 docker run -d \
   -p 5000:5000 \
   --name InvestigateR \
-  ghcr.io/robinzor/investigater:latest
+  ghcr.io/robinzor/investigater:main
 
 # Run with localhost-only binding (more secure)
 docker run -d \
   -p 127.0.0.1:5000:5000 \
   -e BIND_HOST=127.0.0.1 \
   --name InvestigateR \
-  ghcr.io/robinzor/investigater:latest
+  ghcr.io/robinzor/investigater:main
 ```
 
 #### Local Build
@@ -120,13 +120,13 @@ git clone <repository-url>
 cd InvestigateR
 
 # Build the Docker image
-docker build -t InvestigateR:latest .
+docker build -t InvestigateR:main .
 
 # Run the container
 docker run -d \
   -p 5000:5000 \
   --name InvestigateR \
-  InvestigateR:latest
+  InvestigateR:main
 ```
 
 ### Option 3: Local Installation
@@ -266,7 +266,7 @@ The application has automatic CI/CD via GitHub Actions:
 
 ### Workflow
 
-1. Push to `main`/`master` → Build and push `:latest` tag
+1. Push to `main`/`master` → Build and push `:main` tag
 2. Push a tag (e.g., `v1.0.0`) → Build and push version tag
 3. Images are available at `ghcr.io/robinzor/investigater`
 
